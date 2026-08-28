@@ -7,11 +7,14 @@ Database is NOT connected during unit tests — services use their mock implemen
 
 from __future__ import annotations
 
+import logging
 import os
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+
+# Suppress harmless I/O logging errors during Python process exit
+logging.raiseExceptions = False
 
 # Set a dummy DATABASE_URL so Settings doesn't raise on import
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
