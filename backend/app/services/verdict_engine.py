@@ -394,6 +394,17 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
         r"\buntrue\b",
         r"\bdisproven\b",
         r"\bmyth\b",
+        r"\bno (?:known|authenticated|real)?\s*asteroid\b",
+        r"\bno (?:significant\s+)?threat to earth\b",
+        r"\bno collision course\b",
+        r"\bnot on a collision course\b",
+        r"\btraining exercise\b",
+        r"\btabletop exercise\b",
+        r"\bconference exercise\b",
+        r"\bexercise scenario\b",
+        r"\bhypothetical (?:asteroid|scenario|impact|exercise)\b",
+        r"\bplanetary defense conference\b",
+        r"\bfictional (?:asteroid|scenario|simulation)\b",
     ]
 
 
@@ -408,6 +419,14 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
 
         # Check explicit refutation in evidence
         has_refutation = any(re.search(pat, text) for pat in refutation_patterns)
+
+        # Check simulation / tabletop exercise documents (e.g. PDC conference exercise is not real news)
+        is_exercise_doc = bool(re.search(r"\b(exercise|tabletop|hypothetical|conference exercise|briefing|chodas|\d{4}\s*pdc|simulation|drill)\b", text))
+        is_confirmed_threat_claim = bool(re.search(r"\b(confirmed|will hit|will collide|destroy|impact)\b", claim_lower)) and not bool(re.search(r"\b(exercise|simulation|drill)\b", claim_lower))
+        if is_exercise_doc and is_confirmed_threat_claim:
+            stances[ev_id] = "NEUTRAL"
+            continue
+
 
         # 1. Death / Hoax specific handling
         if is_death_claim:
@@ -435,6 +454,7 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
         if has_refutation:
             stances[ev_id] = "CONTRADICTS"
             continue
+
 
         # 4. Check temporal/live sighting vs prehistoric fossil mismatch
         is_live_sighting_claim = bool(re.search(r"\b(spotted|seen|caught|alive|yesterday|today|this week|sighted|swimming)\b", claim_lower))
@@ -486,25 +506,32 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
 
 
         # Synonym-aware concept matching
-        disrupt_synonyms = {"shut", "down", "wipe", "knock", "out", "take", "disrupt", "collapse", "blackout", "damage", "cripple", "disable", "destroy", "paralyze", "offline", "interfere", "sever"}
-        global_synonyms = {"worldwide", "global", "globally", "world", "earth", "planet", "entire", "across"}
-        solar_synonyms = {"solar", "superstorm", "geomagnetic", "carrington", "cme", "flare", "space"}
+        disrupt_synonyms = {"disrupt", "collapse", "blackout", "damage", "cripple", "disable", "destroy", "paralyze", "offline", "sever"}
+        disrupt_phrases = ["shut down", "wipe out", "knock out", "take down", "cut off"]
+        global_synonyms = {"worldwide", "global", "globally", "world", "earth", "planet", "across"}
+        solar_synonyms = {"solar", "superstorm", "geomagnetic", "carrington", "cme", "flare"}
+        impact_synonyms = {"hit", "impact", "collide", "collision", "strike", "destroy", "crash"}
 
         matched_tokens = []
         for tok in claim_tokens:
             if tok in text:
                 matched_tokens.append(tok)
-            elif tok in disrupt_synonyms and any(s in text for s in disrupt_synonyms):
+            elif tok in disrupt_synonyms and (any(s in text for s in disrupt_synonyms) or any(p in text for p in disrupt_phrases)):
                 matched_tokens.append(tok)
             elif tok in global_synonyms and any(s in text for s in global_synonyms):
                 matched_tokens.append(tok)
             elif tok in solar_synonyms and any(s in text for s in solar_synonyms):
                 matched_tokens.append(tok)
+            elif tok in impact_synonyms and any(w in text for w in impact_synonyms):
+                matched_tokens.append(tok)
 
         match_ratio = len(matched_tokens) / max(1, len(claim_tokens))
 
-        # If excerpt has high semantic relevance and covers core claim concepts
-        if match_ratio >= 0.55 and ev.relevance_score >= 0.40:
+        # Check action match for impact/collision/disruption
+        claim_impact_words = set(claim_tokens) & impact_synonyms
+        has_impact_match = not claim_impact_words or any(w in text for w in impact_synonyms)
+
+        if match_ratio >= 0.60 and ev.relevance_score >= 0.45 and has_impact_match:
             # Check for explicit negation of the predicate in excerpt
             has_local_negation = any(re.search(rf"\bnot\s+{re.escape(tok)}\b", text) for tok in claim_tokens)
             if has_local_negation:
@@ -513,10 +540,12 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
                 stances[ev_id] = "SUPPORTS"
             continue
 
-        # General confirmation phrases (e.g., "could knock out", "can wipe out", "takes down")
-        if re.search(r"\b(could|can|would|likely to|capable of|risk of|threat of|cause|take down|wipe out|knock out|blackout|confirmed|verified|official|reported|classified as|is a|are)\b", text) and match_ratio >= 0.45 and ev.relevance_score >= 0.38:
+        # General confirmation phrases
+        if re.search(r"\b(could|can|would|likely to|capable of|risk of|threat of|cause|take down|wipe out|knock out|blackout|confirmed|verified|official|reported|classified as|is a|are)\b", text) and match_ratio >= 0.55 and ev.relevance_score >= 0.42 and has_impact_match:
             stances[ev_id] = "SUPPORTS"
             continue
+
+
 
         stances[ev_id] = "NEUTRAL"
 
