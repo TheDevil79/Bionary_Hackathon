@@ -1,0 +1,7 @@
+[DEMO DATA] MULTICENTRE DOUBLE-BLIND PHASE 3 CLINICAL TRIAL REPORT
+
+A randomized, placebo-controlled Phase 3 trial evaluating a bivalent mRNA candidate targeting respiratory syncytial virus and influenza strains enrolled 14,800 adult participants across 42 clinical investigation sites.
+
+The primary endpoint of preventing medically attended lower respiratory tract illness was achieved, demonstrating a vaccine efficacy of 89.4% (95% CI: 84.1% - 93.2%) against confirmed infection. Neutralizing antibody titers showed robust seroconversion across all age cohorts, including participants aged 65 and older.
+
+Reported adverse events were predominantly mild to moderate, consisting primarily of transient injection-site tenderness, fatigue, and low-grade pyrexia resolving within 48 hours. No treatment-related serious adverse events or pericarditis incidences were observed during the six-month follow-up period.

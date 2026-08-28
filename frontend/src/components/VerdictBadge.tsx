@@ -9,11 +9,12 @@ interface VerdictBadgeProps {
 }
 
 export default function VerdictBadge({ verdict, size = 'md', showIcon = true }: VerdictBadgeProps) {
-  const config = {
+  const config: Record<string, { icon: typeof CheckCircle2; colors: string }> = {
     'SUPPORTED': { icon: CheckCircle2, colors: 'bg-emerald-500 text-white shadow-emerald-500/30' },
     'CONTRADICTED': { icon: XCircle, colors: 'bg-rose-500 text-white shadow-rose-500/30' },
     'MIXED': { icon: AlertTriangle, colors: 'bg-amber-500 text-white shadow-amber-500/30' },
     'INSUFFICIENT EVIDENCE': { icon: HelpCircle, colors: 'bg-slate-500 text-white shadow-slate-500/30' },
+    'INSUFFICIENT_EVIDENCE': { icon: HelpCircle, colors: 'bg-slate-500 text-white shadow-slate-500/30' },
     'INSUFFICIENT': { icon: HelpCircle, colors: 'bg-slate-500 text-white shadow-slate-500/30' },
   };
 

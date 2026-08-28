@@ -1,4 +1,7 @@
-export type Verdict = 'SUPPORTED' | 'CONTRADICTED' | 'MIXED' | 'INSUFFICIENT EVIDENCE' | 'INSUFFICIENT';
+// ─── UI-facing types (consumed by all components) ───────────────────────────
+// These remain stable so NO component code needs to change.
+
+export type Verdict = 'SUPPORTED' | 'CONTRADICTED' | 'MIXED' | 'INSUFFICIENT EVIDENCE' | 'INSUFFICIENT' | 'INSUFFICIENT_EVIDENCE';
 
 export interface EvidenceItem {
   id: string;
@@ -42,4 +45,50 @@ export interface VerificationResponse {
   claims: ClaimResult[];
   media_analysis: MediaAnalysis | null;
   uncertainty: UncertaintyItem[];
+}
+
+
+// ─── Backend raw response types (exact mirror of POST /analyze) ──────────────
+
+export interface BackendAtomicClaim {
+  id: string;
+  text: string;
+  verdict: string;
+  confidence: number;
+}
+
+export interface BackendPreviousOccurrence {
+  date: string | null;
+  source: string | null;
+  url: string | null;
+}
+
+export interface BackendMediaAnalysis {
+  analyzed: boolean;
+  matched: boolean;
+  similarity: number | null;
+  context_mismatch: boolean;
+  previous_occurrence: BackendPreviousOccurrence | null;
+}
+
+export interface BackendEvidenceItem {
+  id: string;
+  title: string;
+  publisher: string | null;
+  published_at: string | null;
+  url: string | null;
+  excerpt: string;
+  relationship: 'SUPPORTS' | 'CONTRADICTS' | 'CONTEXT_MISMATCH';
+  relevance_score: number;
+}
+
+export interface BackendAnalyzeResponse {
+  claim_id: string;
+  atomic_claims: BackendAtomicClaim[];
+  verdict: string;
+  confidence: number;
+  evidence: BackendEvidenceItem[];
+  media_analysis: BackendMediaAnalysis | null;
+  uncertainty: string[];
+  analyst_notes: string | null;
 }

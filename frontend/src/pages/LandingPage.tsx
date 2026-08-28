@@ -68,12 +68,11 @@ export default function LandingPage() {
     setError(null);
 
     try {
-      const media_id = file ? 'uploaded_media_123' : undefined;
-      const result = await verify({ text: claimText, media_id });
+      const result = await verify({ text: claimText, file: file || undefined });
       setStatus('SUCCESS');
       navigate('/results', { state: { result } });
-    } catch (err) {
-      setError('Failed to connect to the verification server. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to connect to the verification server. Please try again.');
       setStatus('ERROR');
     }
   };
