@@ -463,7 +463,14 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
             stances[ev_id] = "NEUTRAL"
             continue
 
-        # 5. Check if claim asserts recent/contemporary action for a deceased person
+        # 5. Check cosmological / geological age contradiction (e.g. claim says 6000 / thousands of years vs billions of years)
+        has_young_age_claim = bool(re.search(r"\b(6,?000|thousands of|few thousand|young earth)\s*(?:years)?\b", claim_lower))
+        has_cosmic_billions = bool(re.search(r"\b(\d+(?:\.\d+)?\s+billion|billions of)\s+years\b", text))
+        if has_young_age_claim and has_cosmic_billions:
+            stances[ev_id] = "CONTRADICTS"
+            continue
+
+        # 6. Check if claim asserts recent/contemporary action for a deceased person
         is_recent_claim = bool(re.search(r"\b(this year|yesterday|today|recently|in 202[4-9]|currently|now)\b", claim_lower))
         is_deceased_entity = bool(re.search(r"\b(was an?\b|passed away|died in \d{4}|tribute to late|remembers (?:late )?|death of|\(\d{4}[–-]\d{4}\))\b", text))
         if is_recent_claim and is_deceased_entity:
@@ -471,11 +478,12 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
             stances[ev_id] = "CONTRADICTS"
             continue
 
-        # 6. Check historical date mismatch (e.g., claim says "this year" but source is from 1989/1990s)
+        # 7. Check historical date mismatch (e.g., claim says "this year" but source is from 1989/1990s)
         has_historical_year = bool(re.search(r"\b(19\d{2}|200\d|201\d)\b", text))
         if is_recent_claim and has_historical_year and not re.search(r"\b202[4-9]\b", text):
             stances[ev_id] = "NEUTRAL"
             continue
+
 
         # 7. Check political office / leadership claims (e.g., "X is Prime Minister of Y")
         is_office_claim = bool(re.search(r"\b(prime minister|president|chief minister|governor|ceo|monarch|king|queen)\b", claim_lower))

@@ -117,15 +117,24 @@ class WebEvidenceService:
 
         query = claim_text.strip().rstrip(".").strip()
         raw_results = []
-        try:
-            def _fetch_ddg() -> list[dict]:
-                with DDGS(timeout=8.0) as client:
-                    return list(client.text(query, max_results=max_results * 2))
 
-            raw_results = await asyncio.to_thread(_fetch_ddg)
-        except Exception as e:
-            logger.warning("[WEB SEARCH DDG] Query '%s' error: %s", query, e)
-            return []
+        def _fetch_ddg(q: str) -> list[dict]:
+            try:
+                with DDGS(timeout=8.0) as client:
+                    return list(client.text(q, max_results=max_results * 2))
+            except Exception:
+                return []
+
+        raw_results = await asyncio.to_thread(_fetch_ddg, query)
+        if not raw_results:
+            stopwords = {"a", "an", "the", "that", "proves", "proven", "proves that", "taken", "by", "of", "in", "is", "it", "only", "where"}
+            words = [w for w in re.findall(r"\b[a-zA-Z0-9_-]+\b", query) if w.lower() not in stopwords]
+            if len(words) >= 2:
+                fallback_query = " ".join(words[:7])
+                logger.info("[WEB SEARCH DDG] Trying fallback query: '%s'", fallback_query)
+                raw_results = await asyncio.to_thread(_fetch_ddg, fallback_query)
+
+
 
 
         if not raw_results:
