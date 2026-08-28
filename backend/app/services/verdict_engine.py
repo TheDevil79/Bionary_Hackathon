@@ -1,3 +1,4 @@
+
 """
 EvidenceLens — Evidence-Grounded Verdict Engine (Phase 4).
 
@@ -509,6 +510,20 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
             if is_future_or_candidate or has_different_role or is_different_holder:
                 stances[ev_id] = "CONTRADICTS"
                 continue
+
+        # 8. Check subject phenomenon mismatch (e.g. claim says meteorite hit X, but article is about lightning striking X)
+        is_meteor_claim = bool(re.search(r"\b(meteorite|meteor|asteroid|space rock)\b", claim_lower))
+        is_lightning_article = bool(re.search(r"\b(lightning|thunderstorm|thunderbolt|weather event)\b", text)) and not bool(re.search(r"\b(meteorite|meteor|asteroid|space rock)\b", text))
+        if is_meteor_claim and is_lightning_article:
+            stances[ev_id] = "NEUTRAL"
+            continue
+
+        # 9. Check size/weight metric comparison (e.g. "asteroid heavier than Eiffel Tower hit Earth" != hit Eiffel Tower)
+        is_size_comparison = bool(re.search(r"\b(heavier than|size of|taller than|larger than|as big as|weight of|length of)\b", text))
+        if is_size_comparison and not bool(re.search(r"\b(hit the|struck the|impacted the|damaged the)\s+[a-z0-9\s]+", text)):
+            stances[ev_id] = "NEUTRAL"
+            continue
+
 
 
 
