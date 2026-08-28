@@ -1,0 +1,10 @@
+{
+  "id": "source_001",
+  "title": "IMD Weather Bulletin: Heavy Rain and Flash Floods in Chennai",
+  "publisher": "National Meteorological Centre",
+  "url": "https://example.com/reports/imd-bulletin-chennai-rain",
+  "published_at": "2026-08-27T18:00:00Z",
+  "source_type": "news",
+  "license": "Open Data",
+  "language": "en"
+}

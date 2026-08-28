@@ -21,7 +21,7 @@ import logging
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 
 from app.core.config import settings
-from app.schemas.claim import AnalyzeResponse
+from app.schemas.claim import AnalyzeResponse, EvidenceItem
 from app.services import (
     claim_extractor,
     evidence_retriever,
@@ -99,12 +99,16 @@ async def analyze(
         ) from exc
 
     # ── 3. Evidence retrieval (per claim, deduplicated) ───────────────────────
-    evidence_map: dict[str, object] = {}
+    # Build per-claim evidence map so the verdict engine can assess each claim
+    # against exactly the evidence retrieved for it.
+    evidence_per_claim: dict[str, list[EvidenceItem]] = {}
+    all_evidence_map: dict[str, EvidenceItem] = {}
     try:
         for claim in claims:
             items = await evidence_retriever.search(claim)
+            evidence_per_claim[claim.id] = items
             for item in items:
-                evidence_map[str(item.id)] = item
+                all_evidence_map[str(item.id)] = item
     except Exception as exc:
         logger.exception("EvidenceRetriever failed")
         raise HTTPException(
@@ -112,11 +116,11 @@ async def analyze(
             detail="Evidence retrieval service is unavailable. Please try again later.",
         ) from exc
 
-    all_evidence = list(evidence_map.values())
+    all_evidence = list(all_evidence_map.values())
 
     # ── 4. Media analysis ─────────────────────────────────────────────────────
     try:
-        media_result = await media_analyzer.analyze(media)
+        media_result = await media_analyzer.analyze(media, claim_text=text)
     except ValueError as exc:
         # Raised for unsupported type (belt-and-suspenders; already checked above)
         raise HTTPException(
@@ -129,7 +133,9 @@ async def analyze(
 
     # ── 5. Verdict synthesis ──────────────────────────────────────────────────
     try:
-        result = await verdict_engine.verify(claims, all_evidence, media_result)
+        result = await verdict_engine.verify(
+            claims, evidence_per_claim, all_evidence, media_result
+        )
     except Exception as exc:
         logger.exception("VerdictEngine failed")
         raise HTTPException(

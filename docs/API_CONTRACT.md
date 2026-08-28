@@ -49,10 +49,10 @@ Liveness and database readiness probe.
 ```json
 {
   "status": "ok",
-  "database": "ok"
+  "database": "connected"
 }
 ```
-*Note: `database` may be `"ok"` or `"unavailable"`.*
+*Note: `database` may be `"connected"` or `"unavailable"`.*
 
 ---
 

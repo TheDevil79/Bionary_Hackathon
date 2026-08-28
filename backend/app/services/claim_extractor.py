@@ -30,7 +30,7 @@ from app.schemas.claim import AtomicClaim, Verdict
 logger = logging.getLogger(__name__)
 
 # Model configuration
-DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 
 
 # ─── Structured Output Schemas ────────────────────────────────────────────────
@@ -175,7 +175,7 @@ async def extract_claims(
 
     Args:
         text: Raw text to decompose into atomic claims.
-        model_name: Gemini model identifier (default: 'gemini-2.0-flash').
+        model_name: Gemini model identifier (default: 'gemini-3.6-flash').
 
     Returns:
         List of AtomicClaim objects with deterministic IDs (C1, C2, ...).
