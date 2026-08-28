@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # ── AI Services ────────────────────────────────────────────────────────────
     gemini_api_key: str = ""
 
+    # ── Local LLM (Ollama) — fallback when Gemini is rate-limited ─────────────
+    ollama_model: str = "gemma3:12b"
+    ollama_base_url: str = "http://localhost:11434"
+
+
     # ── CORS ───────────────────────────────────────────────────────────────────
     # Typed as str | list[str] so Pydantic Settings accepts raw comma-separated env strings without failing JSON decode
     cors_origins: str | list[str] = [
@@ -66,6 +71,75 @@ class Settings(BaseSettings):
 
     # ── Upload limits ──────────────────────────────────────────────────────────
     max_upload_bytes: int = 20 * 1024 * 1024  # 20 MB
+
+    # ── Web Evidence & Source Reliability ──────────────────────────────────────
+    web_search_enabled: bool = True
+    web_search_model: str = "gemini-3.6-flash"
+
+    trusted_domains_tier_1: list[str] = [
+        "who.int",
+        "un.org",
+        "unesco.org",
+        "worldbank.org",
+        "imf.org",
+        "wmo.int",
+        "nasa.gov",
+        "nih.gov",
+        "cdc.gov",
+        "nature.com",
+        "science.org",
+        "nejm.org",
+        "thelancet.com",
+        "ncbi.nlm.nih.gov",
+        "reuters.com",
+        "apnews.com",
+        "bbc.com",
+        "bbc.co.uk",
+        "weather.gov",
+        "mausam.imd.gov.in",
+        "imd.gov.in",
+    ]
+
+    trusted_domains_tier_2: list[str] = [
+        "wikipedia.org",
+        "britannica.com",
+        "theguardian.com",
+        "nytimes.com",
+        "washingtonpost.com",
+        "wsj.com",
+        "bloomberg.com",
+        "afp.com",
+        "aljazeera.com",
+        "sciencedirect.com",
+        "cell.com",
+        "pnas.org",
+        "factcheck.org",
+        "snopes.com",
+        "politifact.com",
+        "fullfact.org",
+        "thehindu.com",
+        "indianexpress.com",
+        "ndtv.com",
+    ]
+
+    blocked_domains: list[str] = [
+        "instagram.com",
+        "facebook.com",
+        "tiktok.com",
+        "threads.net",
+        "pinterest.com",
+        "youtube.com",
+        "youtu.be",
+        "twitter.com",
+        "x.com",
+        "vimeo.com",
+        "dailymotion.com",
+        "clickbait.example",
+        "spam-archive.xyz",
+        "fakenews-daily.co",
+    ]
+
+
 
     # ── Derived helpers ────────────────────────────────────────────────────────
     @property

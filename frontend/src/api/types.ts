@@ -1,45 +1,63 @@
-export type Verdict = 'SUPPORTED' | 'CONTRADICTED' | 'MIXED' | 'INSUFFICIENT EVIDENCE' | 'INSUFFICIENT';
+/**
+ * EvidenceLens — Frontend API TypeScript Definitions
+ * 
+ * Sourced directly from docs/API_CONTRACT.md and backend/app/schemas/claim.py.
+ */
 
-export interface EvidenceItem {
-  id: string;
-  publisher: string;
-  title: string;
-  publication_date: string;
-  source_type: string;
-  excerpt: string;
-  relevance_score: number;
-  url: string;
-}
+export type Verdict =
+  | 'SUPPORTED'
+  | 'CONTRADICTED'
+  | 'MIXED'
+  | 'INSUFFICIENT_EVIDENCE';
 
-export interface ClaimResult {
+export type Relationship =
+  | 'SUPPORTS'
+  | 'CONTRADICTS'
+  | 'CONTEXT_MISMATCH';
+
+export interface AtomicClaim {
   id: string;
   text: string;
   verdict: Verdict;
   confidence: number;
-  supporting_evidence: EvidenceItem[];
-  contradicting_evidence: EvidenceItem[];
+}
+
+export interface PreviousOccurrence {
+  date: string | null;
+  source: string | null;
+  url: string | null;
 }
 
 export interface MediaAnalysis {
-  similarity_score?: number;
-  previous_occurrence_date?: string | null;
-  possible_context_mismatch?: string | null;
-  metadata?: {
-    original_upload_date: string | null;
-    location: string | null;
-  };
+  analyzed: boolean;
+  matched: boolean;
+  similarity: number | null;
+  context_mismatch: boolean;
+  previous_occurrence: PreviousOccurrence | null;
 }
 
-export interface UncertaintyItem {
-  field: string;
-  reason: string;
+export interface EvidenceItem {
+  id: string;
+  title: string;
+  publisher: string | null;
+  published_at: string | null;
+  url: string | null;
+  excerpt: string;
+  relationship: Relationship;
+  relevance_score: number;
 }
 
-export interface VerificationResponse {
-  verification_id: string;
-  overall_verdict: Verdict;
+export interface AnalyzeResponse {
+  claim_id: string;
+  atomic_claims: AtomicClaim[];
+  verdict: Verdict;
   confidence: number;
-  claims: ClaimResult[];
+  evidence: EvidenceItem[];
   media_analysis: MediaAnalysis | null;
-  uncertainty: UncertaintyItem[];
+  uncertainty: string[];
+  analyst_notes: string | null;
 }
+
+// Backward-compatibility alias during integration
+export type VerificationResponse = AnalyzeResponse;
+export type ClaimResult = AtomicClaim;

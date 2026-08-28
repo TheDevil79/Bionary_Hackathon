@@ -24,6 +24,7 @@ from app.core.config import settings
 from app.schemas.claim import AnalyzeResponse, EvidenceItem
 from app.services import (
     claim_extractor,
+    evidence_acquirer,
     evidence_retriever,
     media_analyzer,
     verdict_engine,
@@ -98,22 +99,22 @@ async def analyze(
             detail="Claim extraction service is unavailable. Please try again later.",
         ) from exc
 
-    # ── 3. Evidence retrieval (per claim, deduplicated) ───────────────────────
-    # Build per-claim evidence map so the verdict engine can assess each claim
-    # against exactly the evidence retrieved for it.
+    # ── 3. Evidence acquisition (local pgvector + live web grounding) ────────
+    # For each atomic claim, acquire, filter (relevance >= 0.35), deduplicate,
+    # and rank combined evidence from verified local corpus and Google Search.
     evidence_per_claim: dict[str, list[EvidenceItem]] = {}
     all_evidence_map: dict[str, EvidenceItem] = {}
     try:
         for claim in claims:
-            items = await evidence_retriever.search(claim)
+            items = await evidence_acquirer.acquire_evidence(claim)
             evidence_per_claim[claim.id] = items
             for item in items:
                 all_evidence_map[str(item.id)] = item
     except Exception as exc:
-        logger.exception("EvidenceRetriever failed")
+        logger.exception("EvidenceAcquirer failed")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Evidence retrieval service is unavailable. Please try again later.",
+            detail="Evidence acquisition service is unavailable. Please try again later.",
         ) from exc
 
     all_evidence = list(all_evidence_map.values())

@@ -1,34 +1,33 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, AlertCircle, Loader2, FileVideo, Image as ImageIcon, ScanText, Crosshair } from 'lucide-react';
+import { Upload, AlertCircle, Loader2, FileVideo, Image as ImageIcon, ScanText, Crosshair, X } from 'lucide-react';
 import { verify } from '../api/verification';
 
 const LOADING_STATES = [
-  "Extracting claims from input...",
-  "Searching evidence database...",
-  "Analyzing media forensics...",
-  "Building verification graph..."
+  "Extracting atomic claims with Gemini...",
+  "Querying pgvector evidence corpus...",
+  "Running multimodal media forensics...",
+  "Evaluating relationships & synthesizing verdict...",
 ];
 
 export default function LandingPage() {
   const [claimText, setClaimText] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  
+
   const [status, setStatus] = useState<'IDLE' | 'SUBMITTING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
     if (status === 'SUBMITTING') {
-      setLoadingIndex(0);
       interval = setInterval(() => {
         setLoadingIndex((prev) => (prev < LOADING_STATES.length - 1 ? prev + 1 : prev));
-      }, 800);
+      }, 1200);
     }
     return () => clearInterval(interval);
   }, [status]);
@@ -36,6 +35,7 @@ export default function LandingPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      setError(null);
     }
   };
 
@@ -54,26 +54,38 @@ export default function LandingPage() {
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setFile(e.dataTransfer.files[0]);
+      setError(null);
+    }
+  };
+
+  const removeFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!claimText.trim() && !file) {
-      setError('Please provide a claim text or upload media to verify.');
+    if (status === 'SUBMITTING') return;
+
+    if (!claimText.trim()) {
+      setError('Please provide a claim statement or text to verify.');
       return;
     }
 
+    setLoadingIndex(0);
     setStatus('SUBMITTING');
     setError(null);
 
     try {
-      const media_id = file ? 'uploaded_media_123' : undefined;
-      const result = await verify({ text: claimText, media_id });
+      const result = await verify({ text: claimText, media: file });
       setStatus('SUCCESS');
-      navigate('/results', { state: { result } });
-    } catch (err) {
-      setError('Failed to connect to the verification server. Please try again.');
+      navigate('/results', { state: { result, userClaim: claimText } });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred during verification.';
+      setError(message);
       setStatus('ERROR');
     }
   };
@@ -88,12 +100,14 @@ export default function LandingPage() {
         <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter">
           Verify Claims with{' '}
           <span className="relative inline-block">
-            <span className="relative z-10 text-indigo-700 bg-clip-text bg-gradient-to-b from-indigo-600 to-indigo-900 text-transparent">Confidence</span>
+            <span className="relative z-10 text-indigo-700 bg-clip-text bg-gradient-to-b from-indigo-600 to-indigo-900 text-transparent">
+              Evidence
+            </span>
             <span className="absolute bottom-1.5 left-0 w-full h-3 bg-indigo-200/60 -z-10 skew-x-12"></span>
           </span>
         </h1>
         <p className="text-lg text-slate-500 max-w-2xl mx-auto font-medium leading-relaxed">
-          Upload a social media post, text claim, or media file. EvidenceLens will analyze provenance, detect manipulation, and source corroborating evidence.
+          Submit statements, viral posts, or media files. EvidenceLens performs atomic claim extraction, pgvector evidence retrieval, media provenance checks, and grounded verdict synthesis.
         </p>
       </div>
 
@@ -106,30 +120,33 @@ export default function LandingPage() {
             <span className="text-xs font-bold uppercase tracking-widest text-slate-500">New Investigation</span>
           </div>
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-            <span>SYS.RDY</span>
+            <span>PIPELINE.RDY</span>
             <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col">
-          
-          {error && status === 'ERROR' && (
-            <div className="bg-rose-50 border-b border-rose-100 p-4 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600" />
-              <p className="text-sm font-semibold text-rose-800">{error}</p>
+          {error && (
+            <div className="bg-rose-50 border-b border-rose-100 p-4 flex items-start gap-3 animate-in fade-in duration-300">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-rose-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-900 mb-0.5">Verification Error</p>
+                <p className="text-sm font-medium text-rose-800 leading-snug">{error}</p>
+              </div>
             </div>
           )}
 
           {/* Split Content Area */}
           <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100">
-            
             {/* Left: Claim Input */}
             <div className="flex-1 p-8 flex flex-col group relative">
               <label htmlFor="claimText" className="flex items-center justify-between mb-4">
                 <span className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
-                  <span className="text-indigo-600 font-mono">01.</span> Claim Text
+                  <span className="text-indigo-600 font-mono">01.</span> Claim Text <span className="text-rose-500">*</span>
                 </span>
-                <span className="text-[10px] font-mono text-slate-400 opacity-0 group-focus-within:opacity-100 transition-opacity">Press Cmd+Enter</span>
+                <span className="text-[10px] font-mono text-slate-400 opacity-0 group-focus-within:opacity-100 transition-opacity">
+                  Ctrl+Enter to verify
+                </span>
               </label>
               <textarea
                 id="claimText"
@@ -141,7 +158,7 @@ export default function LandingPage() {
                   }
                 }}
                 className="flex-1 w-full min-h-[200px] text-lg text-slate-800 placeholder:text-slate-300 bg-transparent resize-none outline-none leading-relaxed transition-all"
-                placeholder="Paste the statement, article excerpt, or social media post here..."
+                placeholder="Paste the statement, news excerpt, or social media post here (e.g. 'A meteorite hit the Eiffel Tower yesterday.')..."
                 disabled={status === 'SUBMITTING'}
               />
               <div className="absolute left-0 bottom-0 w-1 h-0 bg-indigo-500 transition-all duration-300 group-focus-within:h-full"></div>
@@ -150,39 +167,52 @@ export default function LandingPage() {
             {/* Right: Media Upload */}
             <div className="flex-1 p-8 bg-slate-50/30 flex flex-col">
               <span className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2 mb-4">
-                <span className="text-indigo-600 font-mono">02.</span> Image / Video Attachment <span className="text-slate-400 font-normal ml-1">(Optional)</span>
+                <span className="text-indigo-600 font-mono">02.</span> Image / Video Attachment{' '}
+                <span className="text-slate-400 font-normal ml-1">(Optional)</span>
               </span>
-              
-              <div 
+
+              <div
                 className={`flex-1 relative border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-center transition-all duration-200 min-h-[200px] ${
-                  status === 'SUBMITTING' ? 'opacity-50 cursor-not-allowed bg-slate-100 border-slate-200' :
-                  isDragging ? 'border-indigo-400 bg-indigo-50/50 scale-[1.02]' :
-                  file ? 'border-slate-300 bg-white cursor-pointer hover:border-indigo-400 shadow-sm' : 
-                  'border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-slate-300'
+                  status === 'SUBMITTING'
+                    ? 'opacity-50 cursor-not-allowed bg-slate-100 border-slate-200'
+                    : isDragging
+                    ? 'border-indigo-400 bg-indigo-50/50 scale-[1.02]'
+                    : file
+                    ? 'border-slate-300 bg-white cursor-pointer hover:border-indigo-400 shadow-sm'
+                    : 'border-slate-200 bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-slate-300'
                 }`}
                 onClick={() => status !== 'SUBMITTING' && fileInputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  className="hidden" 
-                  accept="image/*,video/*" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime"
                   disabled={status === 'SUBMITTING'}
                 />
-                
+
                 {file ? (
-                  <div className="flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300">
+                  <div className="flex flex-col items-center gap-3 animate-in zoom-in-95 duration-300 p-4">
                     <div className="text-indigo-600">
                       {isVideo ? <FileVideo className="w-10 h-10" /> : isImage ? <ImageIcon className="w-10 h-10" /> : <Upload className="w-10 h-10" />}
                     </div>
-                    <div className="flex flex-col items-center px-4">
+                    <div className="flex flex-col items-center px-4 max-w-full">
                       <span className="font-bold text-slate-800 break-all line-clamp-1">{file.name}</span>
-                      <span className="text-xs text-slate-500 font-medium mt-1 font-mono bg-slate-100 px-2 py-0.5 rounded">Change File</span>
+                      <span className="text-[11px] text-slate-500 font-mono mt-1">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      </span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-3 py-1 rounded border border-rose-200 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" /> Remove file
+                    </button>
                   </div>
                 ) : (
                   <div className="text-slate-400 flex flex-col items-center gap-3 px-6">
@@ -191,7 +221,9 @@ export default function LandingPage() {
                     </div>
                     <div className="flex flex-col items-center gap-1.5">
                       <span className="font-semibold text-slate-700 text-sm">Drop image/video or click to browse</span>
-                      <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">JPG, PNG, MP4, WEBM (Max 50MB)</span>
+                      <span className="text-[10px] font-mono text-slate-400 tracking-widest uppercase">
+                        JPG, PNG, WEBP, GIF, MP4, MOV (Max 20MB)
+                      </span>
                     </div>
                   </div>
                 )}
@@ -202,7 +234,7 @@ export default function LandingPage() {
           {/* Bottom Action Bar */}
           <div className="bg-slate-900 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-slate-400 text-xs font-mono hidden md:block">
-              {status === 'SUBMITTING' ? 'PROCESSING_DATA...' : 'AWAITING_INPUT'}
+              {status === 'SUBMITTING' ? 'TRANSMITTING_TO_ANALYZER...' : 'AWAITING_INPUT'}
             </div>
             <button
               type="submit"

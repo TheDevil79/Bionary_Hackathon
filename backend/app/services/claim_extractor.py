@@ -201,11 +201,12 @@ async def extract_claims(
         logger.info("Gemini successfully extracted %d atomic claims.", len(claims))
         return claims
     except Exception as exc:
-        logger.error(
-            "Gemini claim extraction failed: %s. Falling back to deterministic extractor.", exc
+        logger.warning(
+            "Gemini claim extraction failed (%s). Using fast deterministic extractor.", exc
         )
-        # Graceful degradation so the service remains operational
         return _mock_extract(cleaned_text)
+
+
 
 
 # ─── Mock Fallback (Development Only) ──────────────────────────────────────────
