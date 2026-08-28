@@ -27,11 +27,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Fallback development URL if not explicitly provided in .env
-DEFAULT_DEV_DATABASE_URL = (
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/evidencelens"
-)
-
 
 # ── Declarative base ──────────────────────────────────────────────────────────
 
@@ -50,13 +45,24 @@ def get_engine() -> AsyncEngine | None:
     """Lazily construct and cache the async engine."""
     global _engine
     if _engine is None:
-        db_url = settings.database_url or DEFAULT_DEV_DATABASE_URL
+        db_url = settings.async_database_url
+        if not db_url:
+            logger.info("DATABASE_URL is not set in environment.")
+            return None
+
+        connect_args: dict = {}
+        if "supabase.com" in db_url or ":6543" in db_url or ":5432" in db_url:
+            connect_args["ssl"] = "require"
+            connect_args["statement_cache_size"] = 0
+            connect_args["prepared_statement_cache_size"] = 0
+
         try:
             _engine = create_async_engine(
                 db_url,
-                echo=settings.is_development,
+                echo=False,
                 future=True,
                 pool_pre_ping=True,
+                connect_args=connect_args,
             )
         except Exception as exc:
             logger.warning("Could not initialize database engine: %s", exc)

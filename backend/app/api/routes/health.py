@@ -20,7 +20,7 @@ router = APIRouter(tags=["health"])
     summary="Health check",
     description=(
         "Returns HTTP 200 when the API server is running. "
-        "Optionally reports database connectivity."
+        "Optionally reports database connectivity ('connected' | 'unavailable')."
     ),
 )
 async def health() -> HealthResponse:
@@ -31,7 +31,7 @@ async def health() -> HealthResponse:
 async def _check_database() -> str:
     """
     Attempt a lightweight query to verify the database is reachable.
-    Returns 'ok' or 'unavailable' — never raises or crashes.
+    Returns 'connected' or 'unavailable' — never raises or crashes.
     """
     factory = get_session_factory()
     if factory is None:
@@ -40,7 +40,7 @@ async def _check_database() -> str:
     try:
         async with factory() as session:
             await session.execute(text("SELECT 1"))
-        return "ok"
+        return "connected"
     except Exception as exc:  # noqa: BLE001
         logger.warning("Database health check ping failed: %s", exc)
         return "unavailable"

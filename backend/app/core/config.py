@@ -6,11 +6,12 @@ Never hard-code secrets here.
 
 Usage:
     from app.core.config import settings
-    settings.database_url
+    settings.async_database_url
 """
 
 from __future__ import annotations
 
+import json
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,28 +30,39 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
 
     # ── Database ───────────────────────────────────────────────────────────────
-    database_url: str = (
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/evidencelens"
-    )
+    database_url: str = ""
     """
-    Full async SQLAlchemy connection string.
-    Example (local):    postgresql+asyncpg://user:pass@localhost:5432/evidencelens
-    Example (Supabase): postgresql+asyncpg://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres
+    PostgreSQL connection string.
+    Supports standard postgresql://, postgres://, or postgresql+asyncpg://
+    Example (local):    postgresql://user:pass@localhost:5432/evidencelens
+    Example (Supabase): postgresql://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres
     """
 
     # ── AI Services ────────────────────────────────────────────────────────────
     gemini_api_key: str = ""
 
     # ── CORS ───────────────────────────────────────────────────────────────────
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    # Typed as str | list[str] so Pydantic Settings accepts raw comma-separated env strings without failing JSON decode
+    cors_origins: str | list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", mode="after")
     @classmethod
     def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Accept either a comma-separated string or a list."""
+        """Ensure cors_origins is always returned as a list of strings."""
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+            trimmed = v.strip()
+            if trimmed.startswith("[") and trimmed.endswith("]"):
+                try:
+                    parsed = json.loads(trimmed)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
+                except Exception:
+                    pass
+            return [origin.strip() for origin in trimmed.split(",") if origin.strip()]
+        return [origin.strip() for origin in v if origin.strip()]
 
     # ── Upload limits ──────────────────────────────────────────────────────────
     max_upload_bytes: int = 20 * 1024 * 1024  # 20 MB
@@ -61,9 +73,36 @@ class Settings(BaseSettings):
         return self.app_env.lower() == "development"
 
     @property
+    def async_database_url(self) -> str:
+        """
+        Normalize database_url to use the asyncpg dialect.
+        Handles postgres:// and postgresql:// prefixes automatically.
+        """
+        url = self.database_url.strip()
+        if not url:
+            return ""
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        if url.startswith("postgresql://") and not url.startswith(
+            "postgresql+asyncpg://"
+        ):
+            url = "postgresql+asyncpg://" + url[len("postgresql://") :]
+        return url
+
+    @property
     def database_url_sync(self) -> str:
-        """Synchronous version of the DB URL (used by Alembic migrations)."""
-        return self.database_url.replace("+asyncpg", "")
+        """
+        Synchronous version of the DB URL for Alembic migrations.
+        Strips async driver modifiers.
+        """
+        url = self.database_url.strip()
+        if not url:
+            return ""
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        if url.startswith("postgresql+asyncpg://"):
+            url = "postgresql://" + url[len("postgresql+asyncpg://") :]
+        return url
 
 
 # Singleton instance — import this everywhere.

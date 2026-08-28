@@ -106,7 +106,7 @@ class EvidenceDetailResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    database: str | None = None  # "ok" | "unavailable"
+    database: str | None = None  # "connected" | "unavailable"
 
 
 # ─── Error ────────────────────────────────────────────────────────────────────
