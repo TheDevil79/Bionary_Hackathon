@@ -1,0 +1,79 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env.bak
+
+# ─── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.crt
+secrets.json
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+.npm/
+.pnpm-store/
+dist/
+.next/
+out/
+.nuxt/
+.output/
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+pgdata/
+
+# ─── Uploads / Media ──────────────────────────────────────────────────────────
+uploads/
+media/
+*.mp4
+*.mov
+*.avi
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Alembic ──────────────────────────────────────────────────────────────────
+# Keep versions tracked, only ignore auto-generated pycache
+backend/alembic/__pycache__/
+backend/alembic/versions/__pycache__/
