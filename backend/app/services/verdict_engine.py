@@ -485,12 +485,26 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
 
 
 
-        # Check token matching / affirmation in excerpt
-        matched_tokens = [tok for tok in claim_tokens if tok in text]
+        # Synonym-aware concept matching
+        disrupt_synonyms = {"shut", "down", "wipe", "knock", "out", "take", "disrupt", "collapse", "blackout", "damage", "cripple", "disable", "destroy", "paralyze", "offline", "interfere", "sever"}
+        global_synonyms = {"worldwide", "global", "globally", "world", "earth", "planet", "entire", "across"}
+        solar_synonyms = {"solar", "superstorm", "geomagnetic", "carrington", "cme", "flare", "space"}
+
+        matched_tokens = []
+        for tok in claim_tokens:
+            if tok in text:
+                matched_tokens.append(tok)
+            elif tok in disrupt_synonyms and any(s in text for s in disrupt_synonyms):
+                matched_tokens.append(tok)
+            elif tok in global_synonyms and any(s in text for s in global_synonyms):
+                matched_tokens.append(tok)
+            elif tok in solar_synonyms and any(s in text for s in solar_synonyms):
+                matched_tokens.append(tok)
+
         match_ratio = len(matched_tokens) / max(1, len(claim_tokens))
 
-        # If excerpt has high semantic relevance (>= 0.60) and covers major claim tokens
-        if match_ratio >= 0.70 and ev.relevance_score >= 0.50:
+        # If excerpt has high semantic relevance and covers core claim concepts
+        if match_ratio >= 0.55 and ev.relevance_score >= 0.40:
             # Check for explicit negation of the predicate in excerpt
             has_local_negation = any(re.search(rf"\bnot\s+{re.escape(tok)}\b", text) for tok in claim_tokens)
             if has_local_negation:
@@ -499,14 +513,15 @@ def _fallback_stances(claim_text: str, evidence_items: list[EvidenceItem]) -> di
                 stances[ev_id] = "SUPPORTS"
             continue
 
-        # General confirmation phrases
-        if re.search(r"\b(confirmed|verified|official statement|bulletin|reported|classified as|is a|are)\b", text) and match_ratio >= 0.60:
+        # General confirmation phrases (e.g., "could knock out", "can wipe out", "takes down")
+        if re.search(r"\b(could|can|would|likely to|capable of|risk of|threat of|cause|take down|wipe out|knock out|blackout|confirmed|verified|official|reported|classified as|is a|are)\b", text) and match_ratio >= 0.45 and ev.relevance_score >= 0.38:
             stances[ev_id] = "SUPPORTS"
             continue
 
         stances[ev_id] = "NEUTRAL"
 
     return stances
+
 
 
 

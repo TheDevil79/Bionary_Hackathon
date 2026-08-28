@@ -12,6 +12,7 @@ Responsibility:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
@@ -117,11 +118,15 @@ class WebEvidenceService:
         query = claim_text.strip().rstrip(".").strip()
         raw_results = []
         try:
-            ddgs_client = DDGS()
-            raw_results = list(ddgs_client.text(query, max_results=max_results * 3))
+            def _fetch_ddg() -> list[dict]:
+                with DDGS(timeout=8.0) as client:
+                    return list(client.text(query, max_results=max_results * 2))
+
+            raw_results = await asyncio.to_thread(_fetch_ddg)
         except Exception as e:
             logger.warning("[WEB SEARCH DDG] Query '%s' error: %s", query, e)
             return []
+
 
         if not raw_results:
             return []
