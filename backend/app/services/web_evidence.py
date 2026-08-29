@@ -96,13 +96,87 @@ class WebEvidenceService:
                     exc,
                 )
 
-        # 2. Direct Web Search Fallback (DuckDuckGo)
+        # 2. Direct Web Search Fallback (DuckDuckGo + Wikipedia)
         try:
             logger.info("[WEB SEARCH] Executing DuckDuckGo fallback search for '%s'", claim_text[:50])
-            return await self._execute_ddg_search(claim_text, max_results)
+            results = await self._execute_ddg_search(claim_text, max_results)
+            if results:
+                return results
         except Exception as exc:
             logger.error("[WEB SEARCH] DuckDuckGo search failed for '%s': %s", claim_text[:50], exc)
+
+        # 3. Authoritative Encyclopedia Search Fallback (Wikipedia API)
+        try:
+            logger.info("[WEB SEARCH] Executing Wikipedia open search fallback for '%s'", claim_text[:50])
+            return await self._execute_wikipedia_search(claim_text, max_results)
+        except Exception as exc:
+            logger.error("[WEB SEARCH] Wikipedia search fallback failed for '%s': %s", claim_text[:50], exc)
             return []
+
+    async def _execute_wikipedia_search(
+        self,
+        claim_text: str,
+        max_results: int,
+    ) -> list[EvidenceItem]:
+        """Direct encyclopedia search via Wikipedia API for grounding verifiable factual assertions."""
+        import urllib.parse
+        stopwords = {"a", "an", "the", "that", "proves", "proven", "proves that", "taken", "by", "of", "in", "is", "it", "only", "where", "says", "claims"}
+        words = [w for w in re.findall(r"\b[a-zA-Z0-9_-]+\b", claim_text) if w.lower() not in stopwords]
+        search_query = " ".join(words[:8]) if words else claim_text.strip()
+
+        evidence_items: list[EvidenceItem] = []
+        try:
+            import httpx
+            api_url = "https://en.wikipedia.org/w/api.php"
+            params = {
+                "action": "query",
+                "list": "search",
+                "srsearch": search_query,
+                "utf8": 1,
+                "format": "json",
+                "srlimit": max_results,
+            }
+            headers = {"User-Agent": "EvidenceLens/1.0 (analyst@evidencelens.org)"}
+            async with httpx.AsyncClient(timeout=6.0) as client:
+                res = await client.get(api_url, params=params, headers=headers)
+                if res.status_code != 200:
+                    return []
+                data = res.json()
+
+            search_hits = data.get("query", {}).get("search", [])
+            for hit in search_hits:
+                raw_title = hit.get("title", "")
+                raw_snippet = hit.get("snippet", "")
+                clean_snippet = re.sub(r"<[^>]+>", "", raw_snippet).strip()
+                if not clean_snippet:
+                    continue
+
+                page_url = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(raw_title.replace(' ', '_'))}"
+                tier, reliability_score, _ = classify_domain("wikipedia.org")
+                
+                # Overlap heuristic
+                claim_words = set(re.findall(r"\w+", claim_text.lower()))
+                snippet_words = set(re.findall(r"\w+", (raw_title + " " + clean_snippet).lower()))
+                overlap = len(claim_words & snippet_words) / max(1, len(claim_words))
+                relevance_score = min(0.92, max(0.40, 0.45 + 0.5 * overlap))
+
+                ev_id = uuid.uuid5(uuid.NAMESPACE_URL, page_url)
+                evidence_items.append(
+                    EvidenceItem(
+                        id=ev_id,
+                        title=f"{raw_title} (Wikipedia)",
+                        publisher="Wikipedia",
+                        published_at=None,
+                        url=page_url,
+                        excerpt=clean_snippet,
+                        relationship=Relationship.SUPPORTS,
+                        relevance_score=round(relevance_score, 3),
+                    )
+                )
+        except Exception as exc:
+            logger.warning("[WIKIPEDIA SEARCH] Failed: %s", exc)
+
+        return evidence_items[:max_results]
 
     async def _execute_ddg_search(
         self,
@@ -116,6 +190,10 @@ class WebEvidenceService:
             from duckduckgo_search import DDGS
 
         query = claim_text.strip().rstrip(".").strip()
+        stopwords = {"a", "an", "the", "that", "proves", "proven", "proves that", "taken", "by", "of", "in", "is", "it", "only", "where", "says", "claims"}
+        words = [w for w in re.findall(r"\b[a-zA-Z0-9_-]+\b", query) if w.lower() not in stopwords]
+        cleaned_query = " ".join(words[:8]) if words else query
+
         raw_results = []
 
         def _fetch_ddg(q: str) -> list[dict]:
@@ -125,14 +203,10 @@ class WebEvidenceService:
             except Exception:
                 return []
 
-        raw_results = await asyncio.to_thread(_fetch_ddg, query)
-        if not raw_results:
-            stopwords = {"a", "an", "the", "that", "proves", "proven", "proves that", "taken", "by", "of", "in", "is", "it", "only", "where"}
-            words = [w for w in re.findall(r"\b[a-zA-Z0-9_-]+\b", query) if w.lower() not in stopwords]
-            if len(words) >= 2:
-                fallback_query = " ".join(words[:7])
-                logger.info("[WEB SEARCH DDG] Trying fallback query: '%s'", fallback_query)
-                raw_results = await asyncio.to_thread(_fetch_ddg, fallback_query)
+        # Try cleaned keyword query first for maximum hit rate
+        raw_results = await asyncio.to_thread(_fetch_ddg, cleaned_query)
+        if not raw_results and cleaned_query != query:
+            raw_results = await asyncio.to_thread(_fetch_ddg, query)
 
 
 
@@ -172,8 +246,18 @@ class WebEvidenceService:
                 continue
 
             tier, reliability_score, tier_label = classify_domain(domain)
-            if tier == 4:  # Blocked / spam
+            if tier == 4:  # Blocked / spam / stock photo
                 logger.info("[WEB SOURCE DDG] REJECTED (Tier 4 / blocked): url=%s domain=%s", normalized_url, domain)
+                continue
+
+            # Check for stock photo, fictional illustration, wallpaper, or product listings
+            is_stock_or_promo = bool(re.search(
+                r"\b(stock photo|stock image|stock vector|stock footage|royalty-free|clipart|vector illustration|hd wallpaper|phone wallpaper|buy online|add to cart|art print)\b",
+                f"{raw_title} {raw_body}",
+                re.IGNORECASE,
+            ))
+            if is_stock_or_promo:
+                logger.info("[WEB SOURCE DDG] REJECTED (Stock/Promo content): %s", raw_title[:50])
                 continue
 
             # Diversity: max 2 items per domain
@@ -249,7 +333,7 @@ class WebEvidenceService:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=self.api_key)
+        client = genai.Client(api_key=self.api_key, http_options=types.HttpOptions(timeout=4000))
         search_prompt = self.build_search_query(claim_text)
 
         config = types.GenerateContentConfig(
@@ -318,8 +402,13 @@ class WebEvidenceService:
                 continue
 
             tier, reliability_score, tier_label = classify_domain(domain)
-            if tier == 4:  # Blocked / spam
+            if tier == 4:  # Blocked / spam / stock photo
                 logger.info("[WEB SOURCE] REJECTED (Tier 4 / blocked): url=%s domain=%s", normalized_url, domain)
+                continue
+
+            # Check for stock photo, illustration, or wallpaper listings
+            if bool(re.search(r"\b(stock photo|stock image|stock vector|stock footage|royalty-free|clipart|vector illustration|hd wallpaper)\b", raw_title, re.IGNORECASE)):
+                logger.info("[WEB SOURCE] REJECTED (Stock content in title): %s", raw_title[:50])
                 continue
 
             # 3. Source diversity: max 2 items per domain

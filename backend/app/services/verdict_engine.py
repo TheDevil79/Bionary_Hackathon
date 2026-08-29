@@ -1,4 +1,3 @@
-
 """
 EvidenceLens — Evidence-Grounded Verdict Engine (Phase 4).
 
@@ -226,8 +225,9 @@ def _get_gemini_assessor(
 ) -> _GeminiAssessor:
     """Initialize and return a configured Gemini assessor. Tests mock this function."""
     from google import genai  # lazy import
+    from google.genai import types
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=4000))
     return _GeminiAssessor(client=client, model_name=model_name)
 
 

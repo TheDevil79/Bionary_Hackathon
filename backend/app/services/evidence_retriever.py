@@ -84,7 +84,8 @@ async def search(
             .limit(top_k)
         )
 
-        result = await session.execute(stmt)
+        import asyncio
+        result = await asyncio.wait_for(session.execute(stmt), timeout=4.0)
         rows = result.all()
 
         if not rows:

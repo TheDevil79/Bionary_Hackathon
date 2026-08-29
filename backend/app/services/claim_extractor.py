@@ -102,8 +102,9 @@ class _GeminiModelWrapper:
 def _get_gemini_model(api_key: str, model_name: str = DEFAULT_GEMINI_MODEL) -> Any:
     """Initialize and return a configured Gemini model wrapper instance."""
     from google import genai  # lazy import — only loaded when API key is present
+    from google.genai import types
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=4000))
     return _GeminiModelWrapper(client=client, model_name=model_name)
 
 

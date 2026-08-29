@@ -123,6 +123,7 @@ class Settings(BaseSettings):
     ]
 
     blocked_domains: list[str] = [
+        # Social media & video platforms
         "instagram.com",
         "facebook.com",
         "tiktok.com",
@@ -134,6 +135,33 @@ class Settings(BaseSettings):
         "x.com",
         "vimeo.com",
         "dailymotion.com",
+        "reddit.com",
+        # Stock photo & creative asset marketplaces (contain fictional stock titles)
+        "shutterstock.com",
+        "gettyimages.com",
+        "istockphoto.com",
+        "stock.adobe.com",
+        "adobestock.com",
+        "alamy.com",
+        "dreamstime.com",
+        "freepik.com",
+        "123rf.com",
+        "vectorstock.com",
+        "pixabay.com",
+        "pexels.com",
+        "unsplash.com",
+        "deviantart.com",
+        "artstation.com",
+        "wallpapercave.com",
+        "wallpaperflare.com",
+        "zedge.net",
+        # E-commerce & merchandise
+        "amazon.com",
+        "ebay.com",
+        "aliexpress.com",
+        "etsy.com",
+        "redbubble.com",
+        # Known clickbait & spam
         "clickbait.example",
         "spam-archive.xyz",
         "fakenews-daily.co",

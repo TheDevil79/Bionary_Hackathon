@@ -1,121 +1,263 @@
-# EvidenceLens
+# 🔍 EvidenceLens — Multimodal Claim Verification & Provenance Workbench
 
-**S3: EvidenceLens** — A multimodal claim verification and provenance workbench.
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB.svg?style=flat&logo=react)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6.svg?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791.svg?style=flat&logo=postgresql)](https://github.com/pgvector/pgvector)
+[![Gemini](https://img.shields.io/badge/Google%20Gemini-AI%20Studio-8E75B2.svg?style=flat&logo=google)](https://aistudio.google.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-EvidenceLens accepts a text claim (e.g. a social-media post) and an optional image/video,
-then extracts atomic sub-claims, retrieves supporting or contradicting evidence from a corpus,
-analyzes uploaded media for reuse/context mismatch, and produces a structured verdict with
-full provenance so an analyst can inspect and correct results.
+**EvidenceLens** is an end-to-end multimodal claim verification and forensic provenance system. It accepts complex claims (social media posts, breaking news assertions, transcripts) along with optional media files (images or video clips), extracts atomic sub-claims, retrieves multi-source evidence, performs visual reverse forensics, and synthesizes evidence-grounded verdicts with explainable reasoning chains and confidence calibration.
 
 ---
 
-## Repository layout
+## 🌟 Key Capabilities
+
+1. **Multimodal Claim Decomposition**
+   - Extracts atomic factual propositions from complex compound statements.
+   - Decomposes narrative text into verifiable claims using Google Gemini (with deterministic rule-based fallback).
+
+2. **Hybrid Evidence Retrieval & Provenance**
+   - **Dense Semantic Retrieval:** 384-dimensional vector embeddings powered by `sentence-transformers` and PostgreSQL `pgvector`.
+   - **BM25 Lexical Matching:** Hybrid sparse-dense candidate ranking.
+   - **Live Web Verification:** DuckDuckGo Web Search API, Wikipedia API, and Google Search Grounding for real-time validation.
+   - **Source Credibility & Diversity:** 4-tier domain classification (Tier 1 peer-reviewed / institutional down to Tier 4 blocked spam), domain diversity caps, and promotional/stock photo filters.
+
+3. **Media Forensics & Visual Provenance**
+   - **Perceptual Hashing:** Multi-algorithm hashing (`pHash`, `dHash`, `aHash`, `wHash`) for robust near-duplicate and reuse detection.
+   - **Metadata & EXIF Extraction:** Camera signatures, timestamps, GPS data, and software tampering indicators.
+   - **Context Mismatch Detection:** Identifies recycled media (e.g., historical flood photos re-captioned as current events).
+   - **Multimodal Visual Reasoning:** Vision LLM analysis for discrepancy detection between image content and claim narratives.
+
+4. **Evidence-Grounded Verdict Engine**
+   - Evaluates sub-claims against retrieved evidence items (`SUPPORTS`, `CONTRADICTS`, `CONTEXT_MISMATCH`).
+   - Generates calibrated aggregate confidence scores and overall verdicts (`SUPPORTED`, `CONTRADICTED`, `MIXED`, `INSUFFICIENT_EVIDENCE`).
+   - Produces step-by-step transparent reasoning chains and structured uncertainty warnings.
+
+5. **Interactive Analyst Workbench**
+   - High-performance React 18 + TypeScript + Tailwind CSS user interface.
+   - Sub-claim breakdown tree and interactive evidence inspection cards.
+   - Visual media forensics comparison viewer and provenance timeline.
+   - Human-in-the-loop analyst stance override and report export.
+
+---
+
+## 🏗️ Architecture & Verification Flow
+
+```mermaid
+flowchart TD
+    User([Analyst / User]) -->|Claim Text + Optional Media| API[FastAPI Gateway /analyze]
+    
+    subgraph Ingestion & Forensics
+        API --> Extractor[Claim Extractor\nGemini 2.5 / Rule-Based]
+        API --> MediaEngine[Media Forensics Engine\nEXIF / pHash / Vision]
+    end
+    
+    Extractor -->|Atomic Sub-Claims| Retriever[Evidence Retrieval Pipeline]
+    
+    subgraph Evidence Sources
+        Retriever -->|Dense Semantic Search| PGVector[(PostgreSQL + pgvector)]
+        Retriever -->|Live Web Search| WebSearch[DuckDuckGo & Wikipedia APIs]
+        Retriever -->|Google Grounding| GeminiGround[Gemini Search Grounding]
+    end
+    
+    PGVector --> Reliability[Source Reliability & Domain Tiering]
+    WebSearch --> Reliability
+    GeminiGround --> Reliability
+    
+    Reliability --> Reranker[Cross-Encoder Reranker]
+    
+    subgraph Verdict Synthesis
+        Reranker --> VerdictEngine[Evidence-Grounded Verdict Engine]
+        MediaEngine --> VerdictEngine
+        VerdictEngine --> Calibrator[Confidence & Uncertainty Calibrator]
+    end
+    
+    Calibrator --> Output[Structured Provenance Payload]
+    Output --> UI[React Analyst Workbench UI]
+```
+
+---
+
+## 📁 Repository Structure
 
 ```
-├── backend/        # Python · FastAPI · PostgreSQL · pgvector
-├── frontend/       # React · TypeScript · Vite · Tailwind CSS   (har_dev)
+EvidenceLens-Claim Verification/
+├── backend/
+│   ├── alembic/              # Database migration versions & env
+│   ├── app/
+│   │   ├── api/routes/       # FastAPI endpoints (/analyze, /evidence, /health)
+│   │   ├── core/             # Settings, DB session, vector configurations
+│   │   ├── ingestion/        # Document chunking, embedding, vector ingestion
+│   │   ├── models/           # SQLAlchemy ORM models (EvidenceChunk)
+│   │   ├── schemas/          # Pydantic schemas (Claim, Evidence, Verdict)
+│   │   └── services/         # Claim extractor, retriever, media forensics, verdict engine
+│   ├── scripts/              # Verification and DB diagnostic scripts
+│   ├── tests/                # Unit and integration test suite
+│   ├── .env.example          # Clean environment variables template
+│   └── requirements.txt      # Python dependencies
+├── frontend/
+│   ├── public/               # Static assets & icons
+│   ├── src/
+│   │   ├── api/              # API clients & TypeScript types
+│   │   ├── components/       # UI components (ClaimBreakdown, EvidencePanel, MediaForensics)
+│   │   └── pages/            # LandingPage, ResultsPage
+│   ├── .env.example          # Frontend configuration template
+│   └── package.json          # Node dependencies & scripts
+├── evidence_corpus/          # Curated benchmark documents and metadata
 ├── docs/
-│   └── API_CONTRACT.md   # Source of truth between FE ↔ BE
-├── .gitignore
-└── README.md
+│   ├── API_CONTRACT.md       # Full API contract & schema specification
+│   └── FRONTEND_API_REQUIREMENTS.md
+├── .gitignore                # Git ignore rules (protects keys & secrets)
+└── README.md                 # Project documentation
 ```
 
 ---
 
-## Branch strategy
+## 🔐 Security & Secret Management
 
-| Branch | Owner | Purpose |
-|--------|-------|---------|
-| `main` | — | Stable releases |
-| `dev` | Both | Integration branch |
-| `var_dev` | Backend dev | Backend work |
-| `har_dev` | Frontend dev | Frontend work |
+> [!IMPORTANT]
+> **Never commit `.env` or sensitive API keys to source control.**
+> All `.env` files are ignored by git (`.gitignore`). Always use the provided `.env.example` templates to set up local environments.
 
-**Never commit directly to `dev` or `main`.**  
-Open a PR from your feature branch → `dev`.
+If `GEMINI_API_KEY` is not provided, EvidenceLens automatically falls back to deterministic local mock extractors and rule-based analyzers, ensuring you can run, test, and develop offline safely.
 
 ---
 
-## Quick start — Backend
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- **Python:** 3.11 or higher
+- **Node.js:** 18+ & **npm** / **pnpm**
+- **PostgreSQL:** (Optional, for local pgvector store — local mock fallbacks available)
+
+---
+
+### 1. Backend Setup
 
 ```bash
+# 1. Navigate to backend directory
 cd backend
 
-# Create and activate virtual environment
+# 2. Create and activate a Python virtual environment
 python -m venv .venv
-source .venv/Scripts/activate   # Windows Git Bash
-# or: .venv\Scripts\activate    # Windows CMD/PowerShell
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+# On Linux/macOS:
+source .venv/bin/activate
 
-# Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# 4. Create your environment configuration file
 cp .env.example .env
-# Edit .env and fill in DATABASE_URL and GEMINI_API_KEY
 
-# Run database migrations
+# 5. (Optional) Run migrations if PostgreSQL is running
 alembic upgrade head
 
-# Start development server
+# 6. Start the FastAPI development server
 uvicorn app.main:app --reload --port 8000
 ```
 
-API docs available at: http://localhost:8000/docs
+The interactive API documentation is available at:
+- **Swagger UI:** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ---
 
-## Quick start — Frontend
+### 2. Frontend Setup
 
 ```bash
+# 1. Open a new terminal and navigate to frontend directory
 cd frontend
+
+# 2. Install dependencies
 npm install
+
+# 3. Create your frontend environment configuration
+cp .env.example .env
+
+# 4. Start Vite development server
 npm run dev
 ```
 
-App runs at: http://localhost:5173
-
-> The frontend uses mock data while the backend is not running.  
-> See `docs/API_CONTRACT.md` for the full API specification.
+The application will be live at **[http://localhost:5173](http://localhost:5173)**.
 
 ---
 
-## Environment variables
+## ⚙️ Environment Variables Reference
 
-Copy `backend/.env.example` to `backend/.env` and fill in:
+### Backend (`backend/.env`)
 
-| Variable | Description |
-|----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (supports Supabase) |
-| `GEMINI_API_KEY` | Google Gemini API key |
-| `CORS_ORIGINS` | Comma-separated allowed origins |
-| `MAX_UPLOAD_BYTES` | Max media upload size in bytes (default 20 MB) |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `DATABASE_URL` | No | `""` | PostgreSQL connection string with `pgvector` extension. |
+| `GEMINI_API_KEY` | No | `""` | Google Gemini API key for live LLM extraction & vision analysis. |
+| `CORS_ORIGINS` | No | `http://localhost:5173` | Comma-separated allowed frontend origins. |
+| `MAX_UPLOAD_BYTES` | No | `20971520` | Maximum media upload size in bytes (20 MB). |
+| `APP_ENV` | No | `development` | Application environment (`development` or `production`). |
 
-**Never commit `.env`.**
+### Frontend (`frontend/.env`)
 
----
-
-## API
-
-See [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md) for the complete API specification.
-
-Core endpoints:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Health check |
-| POST | `/analyze` | Submit claim + optional media for verification |
-| GET | `/evidence/{id}` | Retrieve a single evidence item |
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `VITE_API_BASE_URL` | No | `http://localhost:8000` | Target FastAPI backend URL. |
+| `VITE_USE_MOCKS` | No | `false` | Enable pure frontend mocking mode. |
 
 ---
 
-## Tech stack
+## 📚 Ingestion & Corpus Indexing
 
-| Layer | Technology |
-|-------|-----------|
-| Backend API | FastAPI, Python 3.11+ |
-| Database | PostgreSQL + pgvector |
-| Migrations | Alembic |
-| AI / Reasoning | Google Gemini |
-| Embeddings | sentence-transformers |
-| Media analysis | CLIP, perceptual hashing (imagehash) |
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+To load and index the curated evidence corpus into PostgreSQL pgvector:
+
+```bash
+cd backend
+python -m app.ingestion.ingest
+```
+
+---
+
+## 🧪 Testing & Verification
+
+Run the comprehensive automated test suite (90+ tests covering claim extraction, retrieval, media forensics, reliability rating, and verdict engines):
+
+```bash
+cd backend
+pytest -v
+```
+
+Run frontend linting and build validation:
+
+```bash
+cd frontend
+npm run build
+```
+
+---
+
+## 📡 Core API Specification
+
+For detailed endpoint specifications and JSON schemas, refer to [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md).
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Health & database connectivity status probe |
+| `POST` | `/analyze` | Submit claim text & optional media for verification |
+| `GET` | `/evidence/{id}` | Retrieve complete metadata & context for an evidence item |
+
+---
+
+## 🌿 Git Branching Strategy
+
+| Branch | Description |
+|---|---|
+| `main` | Production releases |
+| `dev` | Shared integration branch |
+| `var_dev` | Backend feature development |
+| `har_dev` | Frontend feature development |
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
