@@ -1,0 +1,7 @@
+[DEMO DATA] ANNUAL ENERGY TRANSITION RESEARCH MONOGRAPH
+
+Global investments in utility-scale photovoltaic solar and offshore wind capacity expanded by 22% year-over-year, accounting for 84% of all net newly commissioned electrical generation capacity worldwide.
+
+Grid integration studies conducted across European and North American synchronous transmission zones demonstrate that battery energy storage systems (BESS) combined with dynamic synchronous condensers have mitigated frequency instability risks associated with high renewable penetration. Modern utility-scale battery deployments demonstrated sub-100-millisecond response times during sudden thermal generation outages.
+
+The report concludes that sustained capital expenditure in high-voltage direct current (HVDC) interconnectors is vital for geographic load balancing and long-duration seasonal storage viability.

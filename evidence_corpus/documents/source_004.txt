@@ -1,0 +1,7 @@
+[DEMO DATA] NASA ASTROPHYSICS SCIENTIFIC DISCOVERY RELEASE
+
+Observations conducted by NASA's James Webb Space Telescope (JWST) utilizing the NIRISS (Near-Infrared Imager and Slitless Spectrograph) and NIRSpec (Near-Infrared Spectrograph) instruments have detected carbon-bearing molecules in the atmosphere of habitable-zone exoplanet K2-18 b.
+
+K2-18 b, located approximately 120 light-years from Earth in the constellation Leo, orbits the cool dwarf star K2-18. The transmission spectra gathered during planetary transits revealed clear signatures of methane (CH4) and carbon dioxide (CO2), accompanied by a pronounced absence of ammonia.
+
+These spectroscopic measurements support the hypothesis that K2-18 b may be a Hycean exoplanet possessing a hydrogen-rich atmosphere atop a potential water-dominated ocean surface. Future spectroscopic observations are scheduled to provide further statistical constraints on trace atmospheric constituents.

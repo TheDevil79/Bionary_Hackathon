@@ -1,0 +1,7 @@
+[DEMO DATA] FACT CHECK INVESTIGATION: VIRAL CAR SUBMERSION VIDEO
+
+A 45-second video circulating widely across X and WhatsApp claims that over 500 parked cars were submerged beneath floodwaters near Marina Beach during yesterday's rain event in Chennai.
+
+Our verification desk performed frame-by-frame reverse image searches and perceptual hash matching against historical media repositories. The video was originally filmed on December 2, 2015, during the historic Chennai floods and shows an overflowed basement parking area near the historic Santhome cathedral, not Marina Beach.
+
+Civic authorities in Chennai confirmed that Marina Beach parking zones did not experience major vehicle submersion yesterday. We rate the viral claim CONTRADICTED and flag the video as an out-of-context recycled media asset.
